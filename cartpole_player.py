@@ -15,12 +15,10 @@ def key_release(key, mod):
     None
 
 
-env.render()
-env.unwrapped.viewer.window.on_key_press = key_press
-env.unwrapped.viewer.window.on_key_release = key_release
-
-
 def main():
+    env.render()
+    env.unwrapped.viewer.window.on_key_press = key_press
+    env.unwrapped.viewer.window.on_key_release = key_release
     while 1:
         env.reset()
         total_reward = 0

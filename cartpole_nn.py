@@ -1,11 +1,10 @@
 import gym
-import pandas as pd
 import numpy as np
 from tensorflow.python.keras.models import Sequential
 from tensorflow.python.keras.layers import Dense
 
-RIGHT_CMD = [0, 1]
-LEFT_CMD = [1, 0]
+MOVEMENT_RIGHT = [0, 1]
+MOVEMENT_LEFT = [1, 0]
 
 MIN_REWARD = 100
 
@@ -21,12 +20,14 @@ def key_release(key, mod):
     None
 
 
-def play_random_games(games=100):
-    all_movements = []
+def play_random_games(games):
+    x_train = np.zeros((0, 4))
+    y_train = np.zeros((0, 2))
 
     for episode in range(games):
         episode_reward = 0
-        current_game_data = []
+        current_observations = np.zeros((0, 4))
+        current_actions = np.zeros((0, 2))
         env.reset()
 
         action = env.action_space.sample()
@@ -34,7 +35,8 @@ def play_random_games(games=100):
         while True:
             observation, reward, done, info = env.step(action)
             action = env.action_space.sample()
-            current_game_data.append(np.hstack((observation, LEFT_CMD if action == 0 else RIGHT_CMD)))
+            current_observations = np.append(current_observations, [observation], axis=0)
+            current_actions = np.append(current_actions, [(MOVEMENT_LEFT if action == 0 else MOVEMENT_RIGHT)], axis=0)
 
             if done:
                 break
@@ -42,21 +44,13 @@ def play_random_games(games=100):
             episode_reward += reward
 
         if episode_reward >= MIN_REWARD:
-            print('.', end='')
-            all_movements.extend(current_game_data)
+            x_train = np.vstack((x_train, current_observations))
+            y_train = np.vstack((y_train, current_actions))
 
-    dataframe = pd.DataFrame(
-        all_movements,
-        columns=['cart_position', 'cart_velocity', 'pole_angle', 'pole_velocity_at_tip', 'action_to_left', 'action_to_right']
-    )
-
-    dataframe['action_to_left'] = dataframe['action_to_left'].astype(int)
-    dataframe['action_to_right'] = dataframe['action_to_right'].astype(int)
-
-    return dataframe
+    return x_train, y_train
 
 
-def generate_ml(dataframe):
+def generate_model(x_train, y_train):
     model = Sequential()
     model.add(Dense(64, input_dim=4, activation='relu'))
     # model.add(Dense(128,  activation='relu'))
@@ -66,25 +60,20 @@ def generate_ml(dataframe):
     model.add(Dense(2,  activation='sigmoid'))
 
     model.compile(optimizer='adam', loss='categorical_crossentropy')
-
-    model.fit(
-        dataframe[['cart_position', 'cart_velocity', 'pole_angle', 'pole_velocity_at_tip']],
-        dataframe[['action_to_left', 'action_to_right']],
-        epochs=30
-    )
+    model.fit(x_train, y_train, epochs=10)
 
     return model
 
 
-def play_game(ml_model, games=100):
-    for i_episode in range(games):
+def play_game(model, games):
+    for episode in range(games):
         episode_reward = 0
         observation = env.reset()
 
         while True:
             env.render()
 
-            current_action_pred = ml_model.predict(observation.reshape(1, 4))
+            current_action_pred = model.predict(observation.reshape(1, 4))
 
             current_action = np.argmax(current_action_pred)
 
@@ -92,26 +81,26 @@ def play_game(ml_model, games=100):
 
             if done:
                 episode_reward += 1
-                print(f"Episode finished after {i_episode+1} steps", end='')
+                print("Episode finished after", episode, "steps")
                 break
 
             episode_reward += 1
 
-        print(f" Score = {episode_reward}")
+        print("Score =", episode_reward)
 
 
 def main():
     env.render()
     env.unwrapped.viewer.window.on_key_press = key_press
     env.unwrapped.viewer.window.on_key_release = key_release
-    print("Playingr random games...")
-    df = play_random_games(games=20000)
+    print("Playing random games")
+    x_train, y_train = play_random_games(20000)
 
-    print("Training NN model...")
-    ml_model = generate_ml(df)
+    print("Training NN model")
+    model = generate_model(x_train, y_train)
 
-    print("Playing games with NN...")
-    play_game(ml_model=ml_model, games=100)
+    print("Playing games with NN")
+    play_game(model, 100)
 
 
 if __name__ == "__main__":
