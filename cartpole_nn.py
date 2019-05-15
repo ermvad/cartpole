@@ -6,7 +6,7 @@ from tensorflow.python.keras.layers import Dense
 MOVEMENT_RIGHT = [0, 1]
 MOVEMENT_LEFT = [1, 0]
 
-MIN_REWARD = 100
+MIN_REWARD = 60
 
 env = gym.make('CartPole-v1')
 
@@ -59,7 +59,7 @@ def generate_model(x_train, y_train):
     model.add(Dense(32,  activation='relu'))
     model.add(Dense(2,  activation='sigmoid'))
 
-    model.compile(optimizer='adam', loss='categorical_crossentropy')
+    model.compile(optimizer='adam', loss='mse')
     model.fit(x_train, y_train, epochs=10)
 
     return model
@@ -81,7 +81,7 @@ def play_game(model, games):
 
             if done:
                 episode_reward += 1
-                print("Episode finished after", episode, "steps")
+                print("Episode", episode, "finished after", episode_reward, "steps")
                 break
 
             episode_reward += 1
@@ -94,7 +94,7 @@ def main():
     env.unwrapped.viewer.window.on_key_press = key_press
     env.unwrapped.viewer.window.on_key_release = key_release
     print("Playing random games")
-    x_train, y_train = play_random_games(20000)
+    x_train, y_train = play_random_games(10000)
 
     print("Training NN model")
     model = generate_model(x_train, y_train)

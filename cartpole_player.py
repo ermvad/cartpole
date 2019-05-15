@@ -33,7 +33,7 @@ def main():
             env.render()
             if done:
                 break
-            time.sleep(0.08)
+            time.sleep(0.02)
         print("Total time steps %i and reward %0.2f" % (total_timesteps, total_reward))
 
 
